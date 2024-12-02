@@ -1,0 +1,27 @@
+<!-- // templates/admin/assign_data_points.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assign Data Points</title>
+</head>
+<body>
+    <h1>Assign Data Points to Entity</h1>
+    <form method="POST">
+        <label for="entity">Select Entity:</label>
+        <select name="entity" id="entity">
+            {% for entity in entities %}
+                <option value="{{ entity.id }}">{{ entity.name }}</option>
+            {% endfor %}
+        </select>
+
+        <h2>Data Points</h2>
+        {% for dp in data_points %}
+            <input type="checkbox" name="data_points" value="{{ dp.id }}"> {{ dp.name }}<br>
+        {% endfor %}
+
+        <button type="submit">Assign Data Points</button>
+    </form>
+</body>
+</html>
+{% endblock %}

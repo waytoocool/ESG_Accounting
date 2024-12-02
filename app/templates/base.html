@@ -1,0 +1,40 @@
+<!-- // templates/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ESG Datavault</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block extra_head %}{% endblock %}
+    
+    <!-- Optionally add Bootstrap or Tailwind for styling -->
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h2>ESG Datavault</h2>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('admin.home') }}">Home</a></li>
+                    <li><a href="{{ url_for('admin.data_hierarchy') }}">Data Hierarchy</a></li>
+                    <li><a href="{{ url_for('admin.frameworks') }}">Frameworks</a></li>
+                    <li><a href="{{ url_for('admin.assign_data_points') }}">Assign Data Points</a></li>
+                    <!-- For User Dashboard only -->
+                    <li><a href="{{ url_for('user.dashboard') }}">Data Requests</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% block afterbody %}{% endblock %}
+</body>
+</html>

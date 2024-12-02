@@ -1,0 +1,856 @@
+<!-- // templates/admin/data_hierarchy.html -->
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Title and Create Entity/User Buttons -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <h1>Data Hierarchy</h1>
+    <div>
+        <button id="open-entity-drawer" style="background-color: #4CAF50; color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+            + Add Entity
+        </button>
+        <button id="open-user-drawer" style="background-color: #4CAF50; color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer;">
+            + Add User
+        </button>
+    </div>
+</div>
+
+<!-- Legend for Entity Types -->
+<div style="padding: 10px;">
+    <span style="margin-right: 15px;"><span style="color: #1f77b4; font-size: 20px;">●</span> Top-level</span>
+    <span style="margin-right: 15px;"><span style="color: #ff7f0e; font-size: 20px;">●</span> Company</span>
+    <span style="margin-right: 15px;"><span style="color: #2ca02c; font-size: 20px;">●</span> Team</span>
+</div>
+
+<!-- Hierarchy Chart Container -->
+<div id="hierarchy-chart" style="width: 100%; height: 500px; background: #f9f9f9; border-radius: 10px; padding: 10px; margin-top: 10px;"></div>
+
+<!-- Notification Popup -->
+<div id="notificationPopup" class="popup-message">
+    <button class="close-button" onclick="closePopup()">&times;</button>
+    <strong id="popupTitle"></strong>
+    <p id="popupMessage"></p>
+</div>
+
+<!-- Sidebar Panel -->
+<div id="details-sidebar" class="details-sidebar">
+    <div class="details-sidebar-header">
+        <h3 id="sidebar-title">Entity Details</h3>
+        <button class="close-button" onclick="closeSidebar()">&times;</button>
+    </div>
+    <div class="details-sidebar-content"></div>
+</div>
+
+
+
+<!-- Updated Tooltip for Hover Information -->
+<div id="tooltip" style="position: absolute; background-color: white; border: 1px solid #ccc; padding: 12px; border-radius: 4px; display: none; box-shadow: 2px 2px 6px rgba(0,0,0,0.1); max-width: 300px;">
+    <div class="tooltip-header" style="border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px;">
+        <strong style="font-size: 1.1em;">Entity Details</strong>
+    </div>
+    <div class="tooltip-content"></div>
+</div>
+
+<!-- New Sidebar Panel for Entity information (Option 2) -->
+<div id="details-sidebar" class="details-sidebar">
+    <div class="details-sidebar-header">
+        <h3 id="sidebar-title">Entity Details</h3>
+        <button class="close-button" onclick="closeSidebar()">&times;</button>
+    </div>
+    <div class="details-sidebar-content"></div>
+</div>
+
+<!-- Create Entity Sidebar Drawer -->
+<div id="entity-drawer" style="display: none; position: fixed; top: 0; right: 0; width: 300px; height: 100%; background: white; border-left: 1px solid #ddd; box-shadow: -2px 0px 5px rgba(0,0,0,0.1); padding: 20px; overflow-y: auto;">
+    <h2>Create New Entity</h2>
+    <form id="entity-form" method="post" action="{{ url_for('data_hierarchy') }}" onsubmit="return handleFormSubmit(event)">
+        <div style="margin-bottom: 15px;">
+            <label for="entity_name">Entity Name:</label>
+            <input type="text" id="entity_name" name="name" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label for="entity_type">Entity Type:</label>
+            <select id="entity_type" name="entity_type" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="Company">Company</option>
+                <option value="Team">Team</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label for="parent_entity">Parent Entity:</label>
+            <select id="parent_entity" name="parent_id" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">None (Top-level)</option>
+                {% for entity in entities %}
+                <option value="{{ entity.id }}">{{ entity.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="text-align: right;">
+            <button type="button" id="close-drawer" style="padding: 8px 15px; margin-right: 10px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+            <button type="submit" style="padding: 8px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+        </div>
+    </form>
+</div>
+
+<!-- Create User Sidebar Drawer -->
+<div id="user-drawer" style="display: none; position: fixed; top: 0; right: 0; width: 300px; height: 100%; background: white; border-left: 1px solid #ddd; box-shadow: -2px 0px 5px rgba(0,0,0,0.1); padding: 20px; overflow-y: auto;">
+    <h2>Create New User</h2>
+    <form id="user-form" method="post" action="{{ url_for('admin.create_user') }}" onsubmit="return handleUserFormSubmit(event)">
+        <div style="margin-bottom: 15px;">
+            <label for="user_email">Email:</label>
+            <input type="email" id="user_email" name="email" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label for="entity">Entity:</label>
+            <select id="entity" name="entity_id" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">Select an entity</option>
+                {% for entity in entities %}
+                <option value="{{ entity.id }}">{{ entity.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="text-align: right;">
+            <button type="button" id="close-user-drawer" style="padding: 8px 15px; margin-right: 10px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+            <button type="submit" style="padding: 8px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+        </div>
+    </form>
+</div>
+
+<!-- D3.js Library -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<script>
+    // Load Data from the Server
+    const data = {{ hierarchy_data | tojson }};
+    
+    // Get the container dimensions
+    const container = document.getElementById('hierarchy-chart');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // Clear existing content
+    container.innerHTML = '';
+    
+    // Create new SVG
+    const svg = d3.select("#hierarchy-chart")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+    // Add zoom functionality
+    const g = svg.append("g");
+    svg.call(d3.zoom()
+        .scaleExtent([0.1, 3])
+        .on("zoom", (event) => {
+            g.attr("transform", event.transform);
+        }));
+
+    // Create tree layout
+    const tree = d3.tree()
+        .size([width - 100, height - 100])
+        .separation((a, b) => (a.parent == b.parent ? 1 : 1.2));
+
+    // Create hierarchy
+    const root = d3.hierarchy(data[0]);  // Note: using data[0] since your data is an array
+    
+    // Compute the tree layout
+    tree(root);
+
+    // Color scale
+    const colorScale = d3.scaleOrdinal()
+        .domain(["Group", "Company", "Team"])
+        .range(["#1f77b4", "#ff7f0e", "#2ca02c"]);
+
+    // Create links
+    const links = g.append("g")
+        .attr("fill", "none")
+        .attr("stroke", "#555")
+        .attr("stroke-opacity", 0.4)
+        .attr("stroke-width", 1.5)
+        .selectAll("path")
+        .data(root.links())
+        .join("path")
+        .attr("d", d3.linkVertical()
+            .x(d => d.x)
+            .y(d => d.y));
+
+    // Create nodes
+    const node = g.append("g")
+        .attr("stroke-linejoin", "round")
+        .attr("stroke-width", 3)
+        .selectAll("g")
+        .data(root.descendants())
+        .join("g")
+        .attr("transform", d => `translate(${d.x},${d.y})`);
+    
+    // Add circles to nodes
+    node.append("circle")
+    .attr("fill", d => d.parent ? (d.data.details === "Company" ? colorScale("Company") : colorScale("Team")) : colorScale("Top-level"))
+    .attr("r", 6);
+
+    // Add labels to nodes
+    node.append("text")
+        .attr("dy", "0.31em")
+        .attr("x", d => d.children ? -12 : 12)
+        .attr("text-anchor", d => d.children ? "end" : "start")
+        .text(d => d.data.name)
+        .style("font-size", "20px")
+        .style("font-weight", "500")
+        .style("font-family", "Arial, sans-serif")
+        .clone(true).lower()
+        .attr("stroke", "white")
+        .attr("stroke-width", 4);
+
+    // tooltip content to show users
+    node.on("mouseover", function(event, d) {
+        const usersList = d.data.users.map(user => `<li>${user.email}</li>`).join("");
+        d3.select("#tooltip")
+            .style("display", "block")
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 10) + "px")
+            .html(`
+                <strong>Name:</strong> ${d.data.name}<br>
+                <strong>Type:</strong> ${d.data.details}<br>
+                <strong>Users:</strong> <ul>${usersList}</ul>
+            `);
+    })
+    .on("mouseout", function() {
+        d3.select("#tooltip").style("display", "none");
+    });
+
+    // Center the initial view
+    const initialTransform = d3.zoomIdentity
+        .translate(width/2 - root.x, 50);
+    svg.call(d3.zoom().transform, initialTransform);
+</script>
+
+<!-- Updated JavaScript for form handling -->
+<script>
+    document.getElementById("open-entity-drawer").onclick = function() {
+        document.getElementById("entity-drawer").style.display = "block";
+    };
+
+    document.getElementById("open-user-drawer").onclick = function() {
+        document.getElementById("user-drawer").style.display = "block";
+    };
+
+    document.getElementById("close-drawer").onclick = function() {
+        document.getElementById("entity-drawer").style.display = "none";
+    };
+
+    document.getElementById("close-user-drawer").onclick = function() {
+        document.getElementById("user-drawer").style.display = "none";
+    };
+
+    function handleFormSubmit(event) {
+        event.preventDefault();
+
+        const form = document.getElementById('entity-form');
+        const formData = new FormData(form);
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.innerHTML = 'Saving...';
+
+        fetch("{{ url_for('data_hierarchy') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showFlashMessage('success', data.message);
+                document.getElementById("entity-drawer").style.display = "none";
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showFlashMessage('danger', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showFlashMessage('danger', 'An error occurred while saving the entity.');
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Save';
+        });
+
+        return false;
+    }
+
+    function handleUserFormSubmit(event) {
+        event.preventDefault();
+
+        const form = document.getElementById('user-form');
+        const formData = new FormData(form);
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.innerHTML = 'Saving...';
+
+        fetch("{{ url_for('create_user') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showFlashMessage('success', data.message);
+                document.getElementById("user-drawer").style.display = "none";
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showFlashMessage('danger', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showFlashMessage('danger', 'An error occurred while saving the user.');
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Save';
+        });
+
+        return false;
+    }
+    
+    function showFlashMessage(category, message) {
+        const flashDiv = document.createElement('div');
+        flashDiv.className = `alert alert-${category} flash-message`;
+        flashDiv.innerHTML = message;
+        document.getElementById('flash-messages').appendChild(flashDiv);
+
+        setTimeout(() => {
+            flashDiv.style.display = 'none';
+        }, 5000);
+    }
+</script>
+
+
+<style>
+.popup-message {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1001;
+    min-width: 300px;
+}
+
+.popup-message.show {
+    display: block;
+    animation: slideIn 0.5s ease-out;
+}
+
+.popup-message.hide {
+    animation: slideOut 0.5s ease-out;
+}
+
+.close-button {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.verified-user {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.unverified-user {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+.resend-link {
+    color: #007bff;
+    cursor: pointer;
+    margin-left: 5px;
+    text-decoration: underline;
+}
+
+.info-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-color: #17a2b8;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 16px;
+    font-size: 12px;
+    margin-left: 5px;
+    cursor: help;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Option 1: Sticky Details Panel */
+.sticky-details {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    max-width: 350px;
+    min-width: 300px;
+}
+
+.sticky-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Option 2: Sidebar Panel */
+.details-sidebar {
+    position: fixed;
+    top: 0;
+    right: -400px; /* Start off-screen */
+    width: 400px;
+    height: 100%;
+    background: white;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    transition: right 0.3s ease;
+    z-index: 1000;
+}
+
+.details-sidebar.open {
+    right: 0;
+}
+
+.details-sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.details-sidebar-content {
+    padding: 20px;
+    overflow-y: auto;
+    height: calc(100% - 70px);
+}
+
+/* Common styles for user list items */
+.user-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.user-item {
+    padding: 12px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background: #f8f9fa;
+}
+
+.user-item:hover {
+    background: #f0f0f0;
+}
+
+.user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.user-name {
+    font-weight: 600;
+}
+
+.user-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+</style>
+
+<script>
+let activeNodeId = null;
+let displayMode = 'sidebar'; // 'sidebar' or 'sticky' - change this to switch between display modes
+
+// Updated node click and hover handlers
+node.on("click", function(event, d) {
+    event.stopPropagation(); // Prevent event from bubbling
+
+    if (displayMode === 'sticky') {
+        showStickyDetails(event, d);
+    } else {
+        showSidebar(d);
+    }
+
+    activeNodeId = d.data.id;
+})
+.on("mouseover", function(event, d) {
+    // Only show tooltip if no node is currently selected
+    if (!activeNodeId) {
+        showTooltip(event, d);
+    }
+})
+.on("mouseout", function(event, d) {
+    // Only hide tooltip if no node is currently selected
+    if (!activeNodeId) {
+        hideTooltip();
+    }
+});
+
+// Click handler for closing active displays when clicking outside
+d3.select("body").on("click", function(event) {
+    if (event.target.closest('#sticky-details') || 
+        event.target.closest('#details-sidebar') || 
+        event.target.closest('.node')) {
+        return;
+    }
+
+    closeStickyDetails();
+    closeSidebar();
+    activeNodeId = null;
+});
+
+function showTooltip(event, d) {
+    const tooltipContent = generateEntityDetails(d);
+
+    d3.select("#tooltip")
+        .style("display", "block")
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 10) + "px")
+        .select(".tooltip-content")
+        .html(tooltipContent);
+}
+
+function hideTooltip() {
+    d3.select("#tooltip").style("display", "none");
+}
+
+function showStickyDetails(event, d) {
+    const stickyDetails = d3.select("#sticky-details");
+    const content = generateEntityDetails(d);
+
+    stickyDetails
+        .style("display", "block")
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 10) + "px")
+        .select(".sticky-details-content")
+        .html(content);
+}
+
+function showSidebar(d) {
+    const sidebar = d3.select("#details-sidebar");
+    const content = generateEntityDetails(d);
+
+    document.getElementById("sidebar-title").textContent = d.data.name;
+    sidebar.select(".details-sidebar-content").html(content);
+    sidebar.classed("open", true);
+}
+
+function generateEntityDetails(d) {
+    const usersList = d.data.users.map(user => {
+        // Check if there's an active cooldown for this user
+        const cooldownKey = `resend_cooldown_${user.email}`;
+        const hasCooldown = localStorage.getItem(cooldownKey);
+
+        return `
+            <div class="user-item">
+                <div class="user-header">
+                    <span class="user-name">${user.name} (${user.username})</span>
+                    ${user.is_email_verified ? 
+                        `<span class="verified-user">✓ Verified
+                            <span class="info-icon" title="Email verified on ${user.verification_date}">i</span>
+                        </span>` : 
+                        `<span class="unverified-user">✗ Unverified
+                            ${!hasCooldown ? 
+                                `<button class="resend-verification-btn" 
+                                    onclick="handleVerificationResend('${user.email}')"
+                                    title="Click to resend verification email">
+                                    Resend Verification
+                                </button>` :
+                                `<span class="cooldown-message">Verification email sent</span>`
+                            }
+                        </span>`
+                    }
+                </div>
+                <div class="user-email">${user.email}</div>
+            </div>
+        `;
+    }).join("");
+
+    return `
+        <div class="entity-details">
+            <div class="entity-header">
+                <h4>${d.data.name}</h4>
+                <span class="entity-type">${d.data.details}</span>
+            </div>
+            <div class="users-section">
+                <h5>Users (${d.data.users.length})</h5>
+                <div class="user-list">
+                    ${usersList}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Updated verification handling with cooldown
+function handleVerificationResend(email) {
+    const cooldownKey = `resend_cooldown_${email}`;
+
+    // Check if there's an active cooldown
+    if (localStorage.getItem(cooldownKey)) {
+        showPopup('Notice', 'A verification email was recently sent. Please wait before requesting another one.');
+        return;
+    }
+
+    fetch("{{ url_for('resend_verification') }}", {
+        method: 'POST',
+        body: JSON.stringify({ email: email }),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Set cooldown in localStorage
+            localStorage.setItem(cooldownKey, 'true');
+
+            // Remove cooldown after 15 minutes
+            setTimeout(() => {
+                localStorage.removeItem(cooldownKey);
+            }, 15 * 60 * 1000);
+
+            showPopup('Success', 'Verification email has been sent successfully');
+
+            // Refresh the display to update the UI
+            if (activeNodeId) {
+                const node = d3.select(`[data-id="${activeNodeId}"]`).datum();
+                if (displayMode === 'sidebar') {
+                    showSidebar(node);
+                } else {
+                    showStickyDetails(event, node);
+                }
+            }
+        } else {
+            showPopup('Error', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showPopup('Error', 'An error occurred while resending verification email.');
+    });
+}
+    
+function closeStickyDetails() {
+    d3.select("#sticky-details").style("display", "none");
+    activeNodeId = null;
+}
+
+function closeSidebar() {
+    d3.select("#details-sidebar").classed("open", false);
+    activeNodeId = null;
+}   
+
+// Function to show popup notification
+function showPopup(title, message) {
+    const popup = document.getElementById('notificationPopup');
+    document.getElementById('popupTitle').textContent = title;
+    document.getElementById('popupMessage').textContent = message;
+    popup.classList.add('show');
+    setTimeout(() => {
+        closePopup();
+    }, 4000);
+}
+
+function closePopup() {
+    const popup = document.getElementById('notificationPopup');
+    popup.classList.add('hide');
+    setTimeout(() => {
+        popup.classList.remove('show', 'hide');
+    }, 500);
+}
+
+// Updated form submission handlers
+function handleFormSubmit(event) {
+    event.preventDefault();
+    const form = document.getElementById('entity-form');
+    const formData = new FormData(form);
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.innerHTML = 'Saving...';
+
+    fetch("{{ url_for('data_hierarchy') }}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showPopup('Success', data.message);
+            document.getElementById("entity-drawer").style.display = "none";
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showPopup('Error', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showPopup('Error', 'An error occurred while saving the entity.');
+    })
+    .finally(() => {
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Save';
+    });
+
+    return false;
+}
+
+function handleUserFormSubmit(event) {
+    // Similar update to handleFormSubmit
+    event.preventDefault();
+    const form = document.getElementById('user-form');
+    const formData = new FormData(form);
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.innerHTML = 'Saving...';
+
+    fetch("{{ url_for('create_user') }}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showPopup('Success', data.message);
+            document.getElementById("user-drawer").style.display = "none";
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showPopup('Error', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showPopup('Error', 'An error occurred while saving the user.');
+    })
+    .finally(() => {
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Save';
+    });
+
+    return false;
+}
+
+
+// Add these styles to the existing CSS
+const styles = `
+    .resend-verification-btn {
+        background: none;
+        border: none;
+        color: #007bff;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 8px;
+        font-size: 0.9em;
+    }
+
+    .resend-verification-btn:hover {
+        color: #0056b3;
+    }
+
+    .cooldown-message {
+        color: #6c757d;
+        font-size: 0.9em;
+        margin-left: 8px;
+    }
+
+    .popup-message {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        border-radius: 4px;
+        color: white;
+        z-index: 1000;
+        animation: slideIn 0.3s ease-out;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .popup-message.success {
+        background-color: #28a745;
+    }
+
+    .popup-message.error {
+        background-color: #dc3545;
+    }
+
+    .popup-message.notice {
+        background-color: #ffc107;
+        color: #000;
+    }
+`;
+
+// Add the styles to the document
+const styleSheet = document.createElement('style');
+styleSheet.textContent = styles;
+document.head.appendChild(styleSheet);
+    
+</script>
+
+{% endblock %}

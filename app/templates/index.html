@@ -1,0 +1,37 @@
+<!-- // templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>ESG Accounting System</h1>
+  <p>Welcome, {{ current_user.username }}! You are logged in as {{ role }}.</p>
+  {% if role == 'User' %}
+  <form action="/add" method="post">
+    <input type="text" name="account" placeholder="Account Name" required>
+    <input type="text" name="metric" placeholder="Metric" required>
+    <input type="number" name="value" placeholder="Value" required>
+    <button type="submit">Add Data</button>
+  </form>
+  {% else %}
+  <p>Only Users can add data.</p>
+  {% endif %}
+  <h2>ESG Data</h2>
+  <table>
+    <tr>
+      <th>Account</th>
+      <th>Metric</th>
+      <th>Value</th>
+    </tr>
+    {% for entry in data %}
+    <tr>
+      <td>{{ entry.account }}</td>
+      <td>{{ entry.metric }}</td>
+      <td>{{ entry.value }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>

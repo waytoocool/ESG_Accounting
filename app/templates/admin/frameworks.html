@@ -1,0 +1,61 @@
+<!-- // templates/admin/frameworks.html -->
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Frameworks</h1>
+
+<!-- List of Existing Frameworks -->
+<h2>Existing Frameworks</h2>
+<ul>
+    {% for framework in frameworks %}
+    <li>
+        <strong>{{ framework.name }}</strong>
+        <ul>
+            {% for data_point in framework.data_points %}
+            <li>{{ data_point.name }} - Type: {{ data_point.value_type }}, Unit: {{ data_point.unit }}</li>
+            {% endfor %}
+        </ul>
+    </li>
+    {% endfor %}
+</ul>
+
+<!-- Form to Create a New Framework -->
+<h2>Create New Framework</h2>
+<form action="{{ url_for('admin.frameworks') }}" method="POST">
+    <div class="form-group">
+        <label for="framework_name">Framework Name:</label>
+        <input type="text" id="framework_name" name="framework_name" required class="form-control">
+    </div>
+
+    <div id="data-points-section">
+        <h3>Data Points</h3>
+
+        <!-- Sample Data Point Entry (for cloning) -->
+        <div class="data-point">
+            <input type="text" name="data_point_name" placeholder="Data Point Name" required class="form-control mb-2">
+            <input type="text" name="data_point_value_type" placeholder="Value Type" required class="form-control mb-2">
+            <input type="text" name="data_point_unit" placeholder="Unit" required class="form-control mb-2">
+        </div>
+    </div>
+
+    <!-- Button to Add More Data Points -->
+    <button type="button" onclick="addDataPoint()">Add Another Data Point</button>
+
+    <button type="submit" class="btn btn-primary mt-3">Create Framework</button>
+</form>
+
+<script>
+function addDataPoint() {
+    const dataPointSection = document.getElementById('data-points-section');
+    const newDataPoint = document.createElement('div');
+    newDataPoint.classList.add('data-point');
+    newDataPoint.innerHTML = `
+        <input type="text" name="data_point_name" placeholder="Data Point Name" required class="form-control mb-2">
+        <input type="text" name="data_point_value_type" placeholder="Value Type" required class="form-control mb-2">
+        <input type="text" name="data_point_unit" placeholder="Unit" required class="form-control mb-2">
+    `;
+    dataPointSection.appendChild(newDataPoint);
+}
+</script>
+
+{% endblock %}
